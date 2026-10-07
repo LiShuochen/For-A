@@ -38,7 +38,8 @@ def to_mesh(field, grid: Grid, target_faces=None):
     hi = np.minimum(idx.max(0) + 3, field.shape)
     sub = field[lo[0]:hi[0], lo[1]:hi[1], lo[2]:hi[2]]
     sub = np.pad(sub, 1, constant_values=BIG)
-    verts, faces, _, _ = marching_cubes(sub, 0.0, spacing=(h, h, h), allow_degenerate=False)
+    # a tiny iso offset avoids exact zeros, whose degenerate triangles would otherwise tear holes
+    verts, faces, _, _ = marching_cubes(sub, 1e-5, spacing=(h, h, h), allow_degenerate=False)
     verts += grid.lo + (lo - 1) * h
     mesh = trimesh.Trimesh(verts, faces, process=True)
     if mesh.volume < 0:

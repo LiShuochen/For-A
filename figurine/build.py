@@ -40,6 +40,26 @@ def _minus(a, *others):
     return n
 
 
+def robust_union(meshes):
+    """Boolean union; repairs and retries, and as a last resort concatenates the closed shells
+    (slicers such as Bambu Studio merge overlapping shells of one STL anyway)."""
+    try:
+        return trimesh.boolean.union(meshes, engine="manifold")
+    except Exception as ex:  # noqa: BLE001
+        print("[union] manifold failed:", ex, "- repairing", flush=True)
+    fixed = []
+    for m in meshes:
+        m = m.copy()
+        trimesh.repair.fill_holes(m)
+        trimesh.repair.fix_normals(m)
+        fixed.append(m)
+    try:
+        return trimesh.boolean.union(fixed, engine="manifold")
+    except Exception as ex:  # noqa: BLE001
+        print("[union] still failing:", ex, "- exporting concatenated shells", flush=True)
+        return trimesh.util.concatenate(fixed)
+
+
 def export(name, parts, h_parts, faces_per_part=600_000):
     """parts: ordered {part: node}; later parts lose their overlap with earlier ones.
 
@@ -71,7 +91,7 @@ def export(name, parts, h_parts, faces_per_part=600_000):
                          "seconds": round(time.time() - t)}
         print(f"[{name}] part {pname}: {len(m.faces)} faces, {report[pname]['seconds']}s", flush=True)
         earlier.append(node)
-    whole = trimesh.boolean.union(list(meshes.values()), engine="manifold")
+    whole = robust_union(list(meshes.values()))
     whole.export(os.path.join(OUT, name, f"{name}.stl"))
     rep = mesh_report(whole)
     rep["parts"] = report
@@ -99,9 +119,6 @@ def full(height=170.0, base_h=3.0, h_body=0.14, h_head=0.08):
     return export("his_jk_full", parts, hp)
 
 
-if __name__ == "__main__":
-    what = sys.argv[1] if len(sys.argv) > 1 else "full"
-    globals()[what]()
 
 
 def _luntima(height_body_to_neck=None, k=None, base_h=3.0):
@@ -142,9 +159,10 @@ def long_hair(at: A.Attach, hd, pl, k, base_h=3.0):
     her_c = 0.5 * (cap.min(0) + cap.max(0))
     her_w = 0.5 * (cap[:, 0].max() - cap[:, 0].min())
     his_c = pl.to_world(hd.C)
-    his_w = (hd.P.half_width + hd.P.hair_top) * hd.s * 1.04
+    his_w = (hd.P.half_width + 0.5 * hd.P.hair_top) * hd.s
     sc_f = his_w / her_w
-    V = (hv - her_c) * sc_f + his_c + np.array([0, 0.0, 0.10 * his_w])
+    # sit the wig on his skull: a touch lower and further back so it hugs the crown
+    V = (hv - her_c) * sc_f + his_c + np.array([0, 0.06 * his_w, -0.05 * his_w])
     m = trimesh.Trimesh(V, hf, process=False)
     m.remove_unreferenced_vertices()
     return m
@@ -215,3 +233,8 @@ def bust(height=172.0, base_h=3.0, head_mm=50.0, h_body=0.13, h_head=0.08):
     parts = {"skin_head": head["skin_head"], "body": body, "hair": head["hair"], "glasses": head["glasses"], "base": base}
     hp = {"skin_head": h_head, "body": h_body, "hair": h_head, "glasses": h_head, "base": 0.3}
     return export("his_jk_bust", parts, hp)
+
+
+if __name__ == "__main__":
+    what = sys.argv[1] if len(sys.argv) > 1 else "full"
+    globals()[what]()
