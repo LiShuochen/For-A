@@ -22,7 +22,7 @@ from .mesher import nonmanifold_edges
 WHOLE = 1_000_000
 PARTS = {
     "his_jk_full": {"skin_head": 400_000, "body": 450_000, "hair": 200_000, "glasses": 60_000, "base": 30_000},
-    "his_jk_q_doll": {"skin_head": 350_000, "hair": 180_000, "glasses": 60_000, "top": 150_000, "collar": 60_000,
+    "his_jk_q_doll": {"skin_head": 280_000, "hair": 140_000, "glasses": 60_000, "top": 150_000, "collar": 60_000,
                       "bow": 40_000, "skirt": 150_000, "socks": 60_000, "shoes": 60_000, "skin": 100_000,
                       "base": 30_000},
 }
