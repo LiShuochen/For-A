@@ -24,18 +24,24 @@ def render(mesh, az=0.0, el=0.0, px=0.15, colors=None, crop=None, bg=255):
 
     colors: optional (n_vertices, 3) floats 0..1. crop: world-space (zmin, zmax) to frame.
     """
+    import trimesh
+    from scipy.spatial import cKDTree
+
     if crop is not None:
-        import trimesh
         c = mesh.triangles_center[:, 2]
         sel = (c >= crop[0] - 1) & (c <= crop[1] + 1)
+        old_v = mesh.vertices
         mesh = trimesh.Trimesh(mesh.vertices, mesh.faces[sel], process=False)
         mesh.remove_unreferenced_vertices()
-        colors = None
+        if colors is not None:
+            colors = colors[cKDTree(old_v).query(mesh.vertices)[1]]
     if mesh.edges_unique_length.max() > 1.5 * px:
         # coarse triangles relative to the pixel size: split them so splats leave no holes
-        import trimesh
+        old_v = mesh.vertices
         v2, f2 = trimesh.remesh.subdivide_to_size(mesh.vertices, mesh.faces, max_edge=0.9 * px, max_iter=12)
         mesh = trimesh.Trimesh(v2, f2, process=False)
+        if colors is not None:
+            colors = colors[cKDTree(old_v).query(mesh.vertices)[1]]
     V = np.asarray(mesh.vertices)
     N = np.asarray(mesh.vertex_normals)
     M = _view_matrix(az, el)
