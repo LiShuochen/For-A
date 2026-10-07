@@ -71,8 +71,8 @@ def body_colors(mesh, gltf_path, body_objects, k, base_h, prefer_less=("Object_0
     return out
 
 
-def present(name, out_dir, parts, body_cols=None, face_crop_mm=60.0):
-    """parts: {part: mesh}. Writes preview_colour.png, preview_face.png, preview_single.png."""
+def present(name, out_dir, parts, body_cols=None):
+    """parts: {part: mesh}. Writes preview_colour.png, preview_face.png, preview_single_colour.png."""
     cols = {"skin_head": SKIN, "skin": SKIN, "hair": HAIR, "glasses": BLACK, "base": BASE,
             "top": np.array([0.97, 0.97, 0.96]), "collar": np.array([0.13, 0.17, 0.32]),
             "bow": np.array([0.80, 0.12, 0.14]), "skirt": np.array([0.13, 0.17, 0.32]),
@@ -86,11 +86,15 @@ def present(name, out_dir, parts, body_cols=None, face_crop_mm=60.0):
             colors.append(np.tile(cols.get(p, SKIN), (len(m.vertices), 1)))
     whole = trimesh.util.concatenate(meshes)
     col = np.concatenate(colors)
-    top = whole.bounds[1, 2]
-    px = max(whole.extents.max() / 900.0, 0.12)
-    ims = [render(whole, az, 5, px=px, colors=col) for az in (0, -30, 30, 90, 180)]
+    px = max(whole.extents.max() / 900.0, 0.14)
+    ims = [render(whole, az, 5, px=px, colors=col, subdivide=False) for az in (0, -30, 30, 90, 180)]
     sheet(ims, None, height=1000).save(os.path.join(out_dir, "preview_colour.png"))
-    face = [render(whole, az, 3, px=0.08, colors=col, crop=(top - face_crop_mm, top + 1)) for az in (0, -35, 35)]
-    sheet(face, None, height=800).save(os.path.join(out_dir, "preview_face.png"))
-    single = [render(whole, az, 5, px=px) for az in (0, -30)]
+    single = [render(whole, az, 5, px=px, subdivide=False) for az in (0, -30)]
     sheet(single, None, height=1000).save(os.path.join(out_dir, "preview_single_colour.png"))
+    del whole, col
+    # face close-up from the head parts only
+    hk = [p for p in ("skin_head", "hair", "glasses") if p in parts]
+    head = trimesh.util.concatenate([parts[p] for p in hk])
+    hcol = np.concatenate([np.tile(cols[p], (len(parts[p].vertices), 1)) for p in hk])
+    face = [render(head, az, 3, px=0.1, colors=hcol, subdivide=False) for az in (0, -35, 35)]
+    sheet(face, None, height=800).save(os.path.join(out_dir, "preview_face.png"))

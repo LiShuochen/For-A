@@ -5,7 +5,6 @@ import glob
 import json
 import os
 
-import numpy as np
 import trimesh
 
 from .colorize import body_colors, present
@@ -13,17 +12,6 @@ from .colorize import body_colors, present
 LUNTIMA = "assets/ref_models/beauty/luntima_student/scene.gltf"
 BODY_OBJECTS = ["Object_0", "Object_9", "Object_3"]
 DEFAULT_META = {"his_jk_full": {"k": (170.0 - 3.0) / 17.2, "base_h": 3.0}}
-
-
-def _light(m, target=250_000):
-    """Previews don't need print resolution: simplify big parts to keep memory low."""
-    if len(m.faces) <= target:
-        return m
-    import fast_simplification
-
-    v, fc = fast_simplification.simplify(m.vertices.astype(np.float32), m.faces.astype(np.int64),
-                                         target_reduction=1 - target / len(m.faces), agg=5)
-    return trimesh.Trimesh(v, fc, process=True)
 
 
 def main(only=None):
@@ -41,7 +29,7 @@ def main(only=None):
                   "skin", "base"):
             f = os.path.join(d, "parts", f"{name}_{p}.stl")
             if os.path.exists(f):
-                parts[p] = _light(trimesh.load(f))
+                parts[p] = trimesh.load(f)
         cols = None
         if "body" in parts and meta and "k" in meta:
             cols = body_colors(parts["body"], LUNTIMA, BODY_OBJECTS, meta["k"], meta["base_h"])
