@@ -148,3 +148,25 @@ def figure_parts(path, height_mm, z0=0.0, expression=None, expression_weight=1.0
             out[g] = trimesh.util.concatenate(ms)
     info = {"scale": s, "R": R, "offset": off, "vrm": v, "pose": pose, "tf": tf, "parts": verts}
     return out, info
+
+
+CHIBI_SCALES = {
+    "spine": [0.78, 0.62, 0.76], "chest": [0.78, 0.62, 0.74], "upperChest": [0.78, 0.62, 0.74],
+    "neck": [0.75, 0.5, 0.75],
+    "leftShoulder": [0.85, 0.85, 0.85], "rightShoulder": [0.85, 0.85, 0.85],
+    "leftUpperArm": [0.62] * 3, "rightUpperArm": [0.62] * 3,
+    "leftHand": [0.8] * 3, "rightHand": [0.8] * 3,
+    "leftUpperLeg": [0.82, 0.40, 0.82], "rightUpperLeg": [0.82, 0.40, 0.82],
+    "leftFoot": [1.12] * 3, "rightFoot": [1.12] * 3,
+}
+
+
+def chibi_pose(v, scales=None, arm_down=66.0, elbow=12.0):
+    """Q-version body: short torso and legs, small arms, big shoes, arms relaxed down."""
+    rots = {}
+    for side in ("left", "right"):
+        up, lo = v.bone_position(f"{side}UpperArm"), v.bone_position(f"{side}LowerArm")
+        sgn = np.sign(lo[0] - up[0])
+        rots[f"{side}UpperArm"] = axis_angle([0, 0, 1], -sgn * arm_down)
+        rots[f"{side}LowerArm"] = axis_angle([1, 0, 0], elbow) @ axis_angle([0, 0, 1], -sgn * 6.0)
+    return v.scaled_pose(scales or CHIBI_SCALES, rots)

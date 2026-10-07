@@ -100,6 +100,7 @@ class Head2:
         glab = self.pts[9]
         self.C = np.array([0.0, glab[1] + P.half_length, P.centre_z])
         self.mesh = self._face_mesh()
+        self.neck_r, self.neck_bottom = 50.0, -235.0
         self._build_maps()
 
     # ---------------------------------------------------------------- landmarks
@@ -377,9 +378,9 @@ class Head2:
                 ed = self.ear(X, Y, Z, sg)
                 h = np.clip(0.5 + 0.5 * (ed - d) / 3.0, 0, 1)  # smooth union, k = 3 mm
                 d = ed * (1 - h) + d * h - 3.0 * h * (1 - h)
-            # neck stub
+            # neck stub (radius / length are set when the head is attached to a body)
             nx, ny = X, Y - (self.C[1] - 12.0)
-            neck = np.maximum(np.sqrt(nx ** 2 + ny ** 2) - 50.0, np.maximum(Z - (-60.0), -235.0 - Z))
+            neck = np.maximum(np.sqrt(nx ** 2 + ny ** 2) - self.neck_r, np.maximum(Z - (-60.0), self.neck_bottom - Z))
             h = np.clip(0.5 + 0.5 * (neck - d) / 12.0, 0, 1)
             return neck * (1 - h) + d * h - 12.0 * h * (1 - h)
         if which == "glasses":
@@ -412,3 +413,47 @@ class Head2:
             return (s * self.local_fields(lx, ly, lz, which)).astype(np.float32)
 
         return Func(f, (wc.min(0), wc.max(0)), name or f"head_{which}")
+
+
+def crown_tufts(hd: Head2, pl: Placement, n=48, seed=3, min_elev=46.0, length=(13.0, 21.0),
+                r_base_p=0.32, r_tip_p=0.18):
+    """Many short hairs sticking up from the crown of a bald head (Q-version gag).
+
+    Each tuft is a slightly bent, tapered spike growing from the scalp roughly along the surface
+    normal, tilted a little toward the back. Radii are given in printed mm (printable minimums),
+    lengths in real mm. Only the crown is used so every spike points upward (FDM friendly).
+    """
+    from .sdf import Union, round_cone
+
+    rng = np.random.default_rng(seed)
+    golden = np.pi * (3 - np.sqrt(5))
+    out = []
+    k = 0
+    i = 0
+    while k < n and i < 4000:
+        i += 1
+        z = 1 - (i + 0.5) / 600.0
+        if z < np.sin(np.radians(min_elev)):
+            break
+        r = np.sqrt(1 - z * z)
+        a = golden * i
+        d = np.array([r * np.cos(a), r * np.sin(a), z])
+        d += rng.normal(scale=0.03, size=3)
+        d /= np.linalg.norm(d)
+        if rng.random() < 0.25:  # leave some gaps so it looks sparse and messy
+            continue
+        phi = np.degrees(np.arctan2(d[0], -d[1]))
+        th = np.degrees(np.arcsin(d[2]))
+        Rs = float(hd._lookup(hd.R_smooth, np.array([phi]), np.array([th]))[0])
+        base = hd.C + (Rs - 1.0) * d
+        L = rng.uniform(*length)
+        tilt = d + np.array([rng.normal(scale=0.15), 0.25 + rng.normal(scale=0.1), 0.0])
+        tilt /= np.linalg.norm(tilt)
+        mid = base + 0.55 * L * d
+        tip = mid + 0.45 * L * tilt
+        rb, rt = r_base_p, r_tip_p
+        a_w, m_w, t_w = pl.to_world(base), pl.to_world(mid), pl.to_world(tip)
+        out.append(Union([round_cone(a_w, m_w, rb, 0.5 * (rb + rt)), round_cone(m_w, t_w, 0.5 * (rb + rt), rt)],
+                         name="tuft"))
+        k += 1
+    return Union(out, name="tufts")

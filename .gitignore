@@ -3,3 +3,4 @@ assets/
 __pycache__/
 scratch/
 .pytest_cache/
+out/
