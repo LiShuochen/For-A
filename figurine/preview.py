@@ -41,6 +41,10 @@ def render(mesh, az=0.0, el=0.0, px=0.15, colors=None, crop=None, bg=255, meta=N
         mesh.remove_unreferenced_vertices()
         if colors is not None:
             colors = colors[cKDTree(old_v).query(mesh.vertices)[1]]
+    # never let the splat subdivision explode: coarsen the pixel size if it would need > 6M faces
+    est = mesh.area / (0.4 * (0.9 * px) ** 2)
+    if est > 6e6:
+        px = float(np.sqrt(mesh.area / (0.4 * 6e6)) / 0.9)
     if mesh.edges_unique_length.max() > 1.5 * px:
         # coarse triangles relative to the pixel size: split them so splats leave no holes
         old_v = mesh.vertices
