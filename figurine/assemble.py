@@ -74,13 +74,13 @@ def place_head(hd: Head2, at: Attach, roll_deg=0.0, pitch_deg=0.0, chin_drop=0.0
     return Placement(pos, s, R)
 
 
-def body_nodes(groups, at: Attach, h, combined=False, collar_h=4.0, smooth_mm=0.2):
+def body_nodes(groups, at: Attach, h, combined=False, collar_h=4.0, smooth_mm=0.2, zmin=None):
     """SDF nodes of the body; combined=True solidifies skin+clothes together (game meshes that
     have no skin under the clothes need the clothes to close the volume)."""
     nodes = {}
     if combined:
         m = trimesh.util.concatenate(list(groups.values()))
-        f, gr = mesh_to_grid(m, h, min_thickness=0.9)
+        f, gr = mesh_to_grid(m, h, min_thickness=0.9, zmin=zmin)
         if smooth_mm:
             from scipy import ndimage
             f = ndimage.gaussian_filter(f, smooth_mm / h)

@@ -92,10 +92,15 @@ def _signed(d, w, d_sheet, half_t):
     return s.astype(np.float32)
 
 
-def mesh_to_grid(mesh, h, min_thickness=0.8, pad=2.0, coarse=4):
-    """Signed distance grid of `mesh` (mm). Returns (field float32, Grid)."""
+def mesh_to_grid(mesh, h, min_thickness=0.8, pad=2.0, coarse=4, zmin=None):
+    """Signed distance grid of `mesh` (mm). Returns (field float32, Grid).
+
+    zmin: only build the grid above this height (the whole mesh still decides inside/outside).
+    """
     lo = mesh.bounds[0] - pad
     hi = mesh.bounds[1] + pad
+    if zmin is not None:
+        lo[2] = max(lo[2], zmin)
     grid = Grid(lo, hi, h)
     q = _Query(mesh)
     half_t = 0.5 * min_thickness
