@@ -152,18 +152,19 @@ def smile_eyes(base: GridSDF, fr: FaceFrame, width=0.42, arch=0.07, line=0.06, d
     return Func(f, (lo, hi), name)
 
 
-def short_hair(scalp: GridSDF, fr: FaceFrame, thickness=1.6, front_deg=34.0, temple_deg=22.0,
-               temple_phi=38.0, nape_deg=-38.0, texture=0.35, name="hair"):
+def short_hair(scalp: GridSDF, fr: FaceFrame, thickness=1.3, front_deg=32.0, temple_deg=22.0,
+               temple_phi=40.0, nape_deg=-40.0, texture=0.22, strands=110, edge_deg=5.0, name="hair"):
     """His very short hair with a high, receding M-shaped hairline, as a shell over `scalp`.
 
     Angles: elevation (deg) of the hairline seen from the cranium centre; front_deg at the
-    centre of the forehead, temple_deg at the receding corners (phi = +-temple_phi).
+    centre of the forehead, temple corners recede by 6 deg at phi = +-temple_phi.
+    Thickness is fullest on the crown and tapers to ~35% at the hairline; fine grooves running
+    front-to-back read as a short crop.
     """
     c = fr.head_c
 
     def hairline(phi):
         a = np.abs(phi)
-        # M shape: centre point slightly lower than the corners' recession
         knots = [0, 12, temple_phi, 60, 90, 120, 180]
         vals = [front_deg, front_deg + 2.0, front_deg + 6.0, temple_deg, 12.0, -5.0, nape_deg]
         return np.interp(a, knots, vals)
@@ -174,9 +175,14 @@ def short_hair(scalp: GridSDF, fr: FaceFrame, thickness=1.6, front_deg=34.0, tem
         phi = np.degrees(np.arctan2(X, -Y))
         th = np.degrees(np.arcsin(np.clip(Z / rho, -1, 1)))
         d = sample(scalp, x, y, z)
-        tex = texture * (0.5 + 0.5 * np.sin(np.radians(phi) * 70) * np.sin(np.radians(th) * 50))
-        shell = np.maximum(d - (thickness - tex), -d - 0.4)
-        line = np.radians(hairline(phi) - th) * rho
+        hl = hairline(phi)
+        above = th - hl
+        crown = 0.75 + 0.25 * np.clip(th / 60.0, 0, 1)
+        edge = 0.35 + 0.65 * np.clip(above / edge_deg, 0, 1)
+        grooves = texture * (0.5 + 0.5 * np.cos(np.radians(phi) * strands)) ** 2
+        t = thickness * crown * edge - grooves * edge
+        shell = np.maximum(d - t, -d - 0.4)
+        line = np.radians(-above) * rho
         return np.maximum(shell, line)
 
     R = fr.head_r * 1.35

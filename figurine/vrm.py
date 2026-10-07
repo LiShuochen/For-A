@@ -41,7 +41,7 @@ class Part:
 
 class VRM:
     def __init__(self, path):
-        self.g = pygltflib.GLTF2().load(path)
+        self.g = pygltflib.GLTF2().load_binary(path)
         self.blob = self.g.binary_blob()
         self.n_nodes = len(self.g.nodes)
         self.parent = [-1] * self.n_nodes
@@ -135,6 +135,38 @@ class VRM:
             pose[i] = Gr.T @ Rw @ Gr  # rotate about world axes through the joint
         return pose
 
+    def scaled_pose(self, world_scales, world_rots=None):
+        """Pose from desired *cumulative* world scales per humanoid bone (+ world rotations).
+
+        VRoid rest poses have identity joint rotations, so world and local axes coincide. For each
+        bone the local extra transform is P = S_parent_cum^-1 @ S_desired, then the rotation:
+        children inherit the parent's scale, so this keeps every bone at exactly its own scale.
+        """
+        world_rots = world_rots or {}
+        want = {self.bones[b]: np.asarray(s, float) for b, s in world_scales.items() if b in self.bones}
+        rots = {self.bones[b]: R for b, R in world_rots.items() if b in self.bones}
+        cum = {}
+
+        def cumulative(i):
+            if i in cum:
+                return cum[i]
+            if i in want:
+                cum[i] = want[i]
+            else:
+                cum[i] = np.ones(3) if self.parent[i] < 0 else cumulative(self.parent[i])
+            return cum[i]
+
+        pose = {}
+        for i in range(self.n_nodes):
+            sc = cumulative(i)
+            par = np.ones(3) if self.parent[i] < 0 else cumulative(self.parent[i])
+            P = np.diag(sc / par)
+            if i in rots:
+                P = P @ rots[i]
+            if i in rots or not np.allclose(P, np.eye(3)):
+                pose[i] = P
+        return pose
+
     def parts(self, pose=None, morphs=None):
         """All mesh primitives, skinned with `pose`. morphs: {mesh index: {target index: weight}}."""
         pose = pose or {}
@@ -154,14 +186,19 @@ class VRM:
                 V = self.acc(a.POSITION).copy()
                 for ti, w in morphs.get(node.mesh, {}).items():
                     if prim.targets and ti < len(prim.targets) and w:
-                        V += w * self.acc(prim.targets[ti]["POSITION"])
+                        V += w * self.acc(prim.targets[ti]["POSITION"])  # targets share the buffer layout
                 if prim.indices is None:
                     Fc = np.arange(len(V)).reshape(-1, 3)
                 else:
                     Fc = self.acc(prim.indices).reshape(-1, 3).astype(np.int64)
+                # VRoid primitives share one big vertex buffer: keep only referenced vertices
+                used, Fc = np.unique(Fc, return_inverse=True)
+                Fc = Fc.reshape(-1, 3)
+                V = V[used]
+                sel = used
                 if skin is not None and a.JOINTS_0 is not None:
-                    jt = self.acc(a.JOINTS_0).astype(np.int64)
-                    wt = self.acc(a.WEIGHTS_0).astype(np.float64)
+                    jt = self.acc(a.JOINTS_0).astype(np.int64)[sel]
+                    wt = self.acc(a.WEIGHTS_0).astype(np.float64)[sel]
                     wt = wt / np.maximum(wt.sum(1, keepdims=True), 1e-9)
                     Vh = np.concatenate([V, np.ones((len(V), 1))], 1)
                     P = np.zeros((len(V), 3))
