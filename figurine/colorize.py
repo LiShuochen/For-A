@@ -90,7 +90,7 @@ def present(name, out_dir, parts, body_cols=None, face_crop_mm=60.0):
     px = max(whole.extents.max() / 900.0, 0.12)
     ims = [render(whole, az, 5, px=px, colors=col) for az in (0, -30, 30, 90, 180)]
     sheet(ims, None, height=1000).save(os.path.join(out_dir, "preview_colour.png"))
-    face = [render(whole, az, 3, px=0.05, colors=col, crop=(top - face_crop_mm, top + 1)) for az in (0, -35, 35)]
+    face = [render(whole, az, 3, px=0.08, colors=col, crop=(top - face_crop_mm, top + 1)) for az in (0, -35, 35)]
     sheet(face, None, height=800).save(os.path.join(out_dir, "preview_face.png"))
     single = [render(whole, az, 5, px=px) for az in (0, -30)]
     sheet(single, None, height=1000).save(os.path.join(out_dir, "preview_single_colour.png"))
