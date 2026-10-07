@@ -229,7 +229,7 @@ class Head2:
             ez = 0.5 * (z_up + z_lo)
             # eyeball: set back behind the lids, gently domed
             r_e = np.hypot((sx - ex) / (0.5 * ew), (sz - ez) / (0.5 * ew))
-            disp += m * (-0.24 + 0.14 * np.clip(1 - r_e ** 2, 0, 1)) / s
+            disp += m * (-0.36 + 0.26 * np.clip(1 - r_e ** 2, 0, 1)) / s  # a real ball sitting behind the lids
             # iris (partly hidden by the narrow lids), pupil, and a catch-light
             ri = 0.27 * ew
             iz = z_lo + 0.58 * (z_up - z_lo)
@@ -237,13 +237,13 @@ class Head2:
             iris = smoothstep(ri + 0.05 / s, ri - 0.05 / s, r_i)
             pupil = smoothstep(0.45 * ri + 0.04 / s, 0.45 * ri - 0.04 / s, r_i)
             hl = np.exp(-(np.hypot(sx - (ex - 0.32 * ri), sz - (iz + 0.30 * ri)) / (0.17 * ri)) ** 2)
-            disp += m * (-0.09 * iris - 0.09 * pupil + 0.12 * hl) / s
+            disp += m * (-0.12 * iris - 0.14 * pupil + 0.16 * hl) / s
             # lid margins: a crisp line where lid meets eyeball, and a little lid thickness above it
-            disp -= line_feature(up, 0.10, 0.20, taper=0.3)
+            disp -= line_feature(up, 0.15, 0.22, taper=0.3)
             disp -= line_feature(lo, 0.05, 0.18, taper=0.5)
             lid = up.copy()
             lid[:, 2] += 0.22 / s
-            disp += line_feature(lid, 0.07, 0.40, taper=0.6)
+            disp += line_feature(lid, 0.14, 0.50, taper=0.6)  # upper-lid thickness overhangs the ball
             # smile: the cheek just under the lower lid puffs up a little
             under = lo.copy()
             under[:, 2] -= 0.18 * ew
