@@ -195,30 +195,72 @@ class Head2:
             amp = (depth_p / s) * ((1 - taper) + taper * np.sin(np.pi * t))
             return amp * np.exp(-(d / (0.5 * width_p / s)) ** 2) * facing
 
-        # eyes: smiling single-lid eyes -> crisp upper-lid line, soft lower lid, slight recess
+        def soft_mask(poly, blur_p=0.12):
+            m = Path(poly).contains_points(np.stack([sx.ravel(), sz.ravel()], 1)).reshape(sx.shape)
+            return ndimage.gaussian_filter(m.astype(float), (blur_p / s) / (R.mean() * np.radians(STEP)))
+
+        # eyes: narrow single-lid eyes with a sculpted eyeball, iris, pupil and catch-light so the
+        # print has a gaze even without paint; lid margins have a little thickness
         up_r = p[[33, 246, 161, 160, 159, 158, 157, 173, 133]]
         up_l = p[[263, 466, 388, 387, 386, 385, 384, 398, 362]]
         lo_r = p[[33, 7, 163, 144, 145, 153, 154, 155, 133]]
         lo_l = p[[263, 249, 390, 373, 374, 380, 381, 382, 362]]
         for up, lo in ((up_r, lo_r), (up_l, lo_l)):
-            disp -= line_feature(up, P.groove_d * 1.15, P.groove_w * 1.05, taper=0.5)
-            disp -= line_feature(lo, P.groove_d * 0.45, P.groove_w * 0.8)
-            eye = Path(np.concatenate([up[:, [0, 2]], lo[::-1, [0, 2]]]))
-            m = eye.contains_points(np.stack([sx.ravel(), sz.ravel()], 1)).reshape(sx.shape)
-            disp -= (0.10 / s) * ndimage.gaussian_filter(m.astype(float), 0.3 / STEP) * facing
+            poly = np.concatenate([up[:, [0, 2]], lo[::-1, [0, 2]]])
+            m = soft_mask(poly) * facing
+            ex = 0.5 * (up[0, 0] + up[-1, 0])
+            ew = abs(up[0, 0] - up[-1, 0])
+            z_up, z_lo = up[len(up) // 2, 2], lo[len(lo) // 2, 2]
+            ez = 0.5 * (z_up + z_lo)
+            # eyeball: set back behind the lids, gently domed
+            r_e = np.hypot((sx - ex) / (0.5 * ew), (sz - ez) / (0.5 * ew))
+            disp += m * (-0.24 + 0.14 * np.clip(1 - r_e ** 2, 0, 1)) / s
+            # iris (partly hidden by the narrow lids), pupil, and a catch-light
+            ri = 0.27 * ew
+            iz = z_lo + 0.58 * (z_up - z_lo)
+            r_i = np.hypot(sx - ex, sz - iz)
+            iris = smoothstep(ri + 0.05 / s, ri - 0.05 / s, r_i)
+            pupil = smoothstep(0.45 * ri + 0.04 / s, 0.45 * ri - 0.04 / s, r_i)
+            hl = np.exp(-(np.hypot(sx - (ex - 0.32 * ri), sz - (iz + 0.30 * ri)) / (0.17 * ri)) ** 2)
+            disp += m * (-0.09 * iris - 0.09 * pupil + 0.12 * hl) / s
+            # lid margins: a crisp line where lid meets eyeball, and a little lid thickness above it
+            disp -= line_feature(up, 0.10, 0.20, taper=0.3)
+            disp -= line_feature(lo, 0.05, 0.18, taper=0.5)
+            lid = up.copy()
+            lid[:, 2] += 0.22 / s
+            disp += line_feature(lid, 0.07, 0.40, taper=0.6)
             # smile: the cheek just under the lower lid puffs up a little
             under = lo.copy()
-            under[:, 2] -= 0.18 * np.linalg.norm(up[0] - up[-1])
-            disp += line_feature(under, 0.10, 1.4, taper=0.8)
-        # mouth: closed smile line through the lip contact, corners already lifted in landmarks
+            under[:, 2] -= 0.18 * ew
+            disp += line_feature(under, 0.08, 1.4, taper=0.8)
+        # mouth: wide mouth, thin upper lip with a crisp border, slightly fuller lower lip,
+        # closed smile (corners already lifted in the landmarks)
+        up_out = p[[61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291]]
+        lo_out = p[[61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291]]
         up_in = p[[78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308]]
         lo_in = p[[78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308]]
-        mouth = 0.5 * (up_in + lo_in)
-        mouth = np.concatenate([p[[61]], mouth, p[[291]]])
-        disp -= line_feature(mouth, P.groove_d, P.groove_w, taper=0.45)
+        def smooth_line(pts, n=40):
+            t = np.r_[0, np.cumsum(np.linalg.norm(np.diff(pts, axis=0), axis=1))]
+            u = np.linspace(0, t[-1], n)
+            out = np.stack([np.interp(u, t, pts[:, k]) for k in range(3)], 1)
+            for _ in range(3):  # light Laplacian smoothing keeps the ends fixed
+                out[1:-1] = 0.5 * out[1:-1] + 0.25 * (out[:-2] + out[2:])
+            return out
+
+        up_out, lo_out = smooth_line(up_out), smooth_line(lo_out)
+        mouth = smooth_line(np.concatenate([p[[61]], 0.5 * (up_in + lo_in), p[[291]]]))
+        upper_lip = soft_mask(np.concatenate([up_out[:, [0, 2]], mouth[::-1, [0, 2]]]), 0.08) * facing
+        lower_lip = soft_mask(np.concatenate([mouth[:, [0, 2]], lo_out[::-1, [0, 2]]]), 0.10) * facing
+        lip_mid = np.exp(-((sx - p[0, 0]) / (0.55 * abs(p[291, 0] - p[61, 0]))) ** 2)
+        disp += (0.05 * upper_lip + 0.12 * lower_lip * (0.5 + 0.5 * lip_mid)) / s
+        disp += line_feature(up_out, 0.05, 0.20, taper=0.7)  # vermilion border / cupid's bow
+        disp -= line_feature(mouth, 0.24, 0.30, taper=0.5)  # where the lips meet
+        chin_fold = lo_out.copy()
+        chin_fold[:, 2] -= 0.35 * abs(lo_out[len(lo_out) // 2, 2] - mouth[len(mouth) // 2, 2])
+        disp -= line_feature(chin_fold[6:-6], 0.06, 0.8, taper=0.9)  # soft shadow under the lower lip
         for c in (61, 291):  # little dimples at the corners
             d = np.hypot(sx - p[c, 0], sz - p[c, 2])
-            disp -= (0.12 / s) * np.exp(-(d / (0.35 / s)) ** 2) * facing
+            disp -= (0.10 / s) * np.exp(-(d / (0.30 / s)) ** 2) * facing
         # faint smile lines from the nose wings
         for ids in ([129, 203, 206, 216], [358, 423, 426, 436]):
             disp -= line_feature(p[ids], 0.07, 0.6)
