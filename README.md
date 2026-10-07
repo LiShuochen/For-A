@@ -8,7 +8,6 @@
 |---|---|---|---|
 | 全身版 | `out/his_jk_full/his_jk_full.stl` | 约 170 mm | 修长身材，害羞比心站姿，白衬衫、领带、黑百褶裙，配本人头像（寸头、黑框眼镜、闭嘴浅笑） |
 | Q 版 · 秃头 | `out/his_jk_q_bald/his_jk_q_bald.stl` | 约 150 mm | 大头娃娃比例，光头，头顶一撮很多根的短毛 |
-| Q 版 · 长发 | `out/his_jk_q_longhair/his_jk_q_longhair.stl` | 约 150 mm | 大头娃娃比例，保留本人发际线，两侧和后面垂下长发 |
 | 半身像 | `out/his_jk_bust/his_jk_bust.stl` | 约 170 mm | 从裙摆以上，脸做得最大最细，裙摆当底座 |
 
 每个子目录里还有：

@@ -59,7 +59,7 @@ def whole_from_sdf(parts, h_parts, head_box, overlap=2.0, max_voxels=110e6):
     rest = sdf.Intersect(u, not_head)
     lo, hi = (np.asarray(v, float) for v in u.box)
     vol = np.prod(hi - lo + 2.0)
-    h_head = min(h_parts.values())
+    h_head = max(min(h_parts.values()), (np.prod(hh - hl) / (0.8 * max_voxels)) ** (1 / 3))
     h_rest = max(max(v for k, v in h_parts.items() if k != "base"), (vol / max_voxels) ** (1 / 3))
     pieces = []
     for node, h in ((head_core, h_head), (rest, h_rest), (parts.get("base"), h_parts.get("base", 0.3))):
@@ -77,10 +77,7 @@ def drop_slivers(m, min_vol=0.05, min_faces=30):
     keep = [c for c in comps if len(c.faces) >= min_faces and abs(c.volume) > min_vol]
     out = trimesh.util.concatenate(keep) if len(keep) > 1 else keep[0]
     out.merge_vertices()
-    out = fix_pinches(out)
-    if not out.is_watertight:
-        trimesh.repair.fill_holes(out)
-    return out
+    return fix_pinches(out)
 
 
 def _bad_edges(m):
@@ -88,21 +85,53 @@ def _bad_edges(m):
     return u[c != 2]
 
 
-def fix_pinches(m, radius=0.5, tries=4):
-    """Cut out a small disc of faces around edges that are not shared by exactly two faces
-    (where two parts touched along a line) and close the resulting simple holes."""
-    for t in range(tries):
-        bad = _bad_edges(m)
-        if len(bad) == 0:
-            return m
-        centres = m.vertices[bad].mean(1)
-        tree = __import__("scipy.spatial", fromlist=["cKDTree"]).cKDTree(centres)
-        d, _ = tree.query(m.triangles_center)
-        keep = d > radius * (1 + t)
-        m = trimesh.Trimesh(m.vertices, m.faces[keep], process=True)
-        m.remove_unreferenced_vertices()
-        trimesh.repair.fill_holes(m)
-    return m
+def fix_pinches(m):
+    """Split edges shared by four faces (two sheets touching along a line): the second sheet gets
+    its own copies of the two vertices, so every edge has exactly two faces. Nothing is deleted."""
+    m = trimesh.Trimesh(m.vertices, m.faces, process=True)
+    faces = m.faces.copy()
+    verts = list(m.vertices)
+    e = np.sort(np.concatenate([faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]]), axis=1)
+    u, c = np.unique(e, axis=0, return_counts=True)
+    bad = u[c == 4]
+    if len(bad) == 0:
+        return m
+    vf = {}
+    for fi, f in enumerate(faces):
+        for v in f:
+            vf.setdefault(int(v), []).append(fi)
+    for a, b in bad:
+        a, b = int(a), int(b)
+        for v, other in ((a, b), (b, a)):
+            fan = vf.get(v, [])
+            parent = {f: f for f in fan}
+
+            def find(x):
+                while parent[x] != x:
+                    parent[x] = parent[parent[x]]
+                    x = parent[x]
+                return x
+
+            by_vertex = {}
+            for f in fan:
+                for x in faces[f]:
+                    x = int(x)
+                    if x != v and x != other:
+                        by_vertex.setdefault(x, []).append(f)
+            for fs in by_vertex.values():
+                for f2 in fs[1:]:
+                    parent[find(f2)] = find(fs[0])
+            groups = {}
+            for f in fan:
+                groups.setdefault(find(f), []).append(f)
+            for g in list(groups.values())[1:]:
+                nv = len(verts)
+                verts.append(verts[v])
+                for f in g:
+                    faces[f][faces[f] == v] = nv
+                vf[nv] = g
+                vf[v] = [f for f in vf[v] if f not in g]
+    return trimesh.Trimesh(np.asarray(verts), faces, process=False)
 
 
 def robust_union(meshes):
