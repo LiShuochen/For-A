@@ -59,12 +59,13 @@ class Head2Params:
     # beautify
     toward_avg: float = 0.15
     symmetry: float = 1.0
-    jaw_scale: float = 1.12  # >1 widens the lower face (his is a broad, round U-shape)
-    eye_open: float = 1.6  # open the narrow eyes so the irises read (his look when facing the camera)
+    jaw_scale: float = 1.03  # >1 widens the lower face (checked against photo overlays)
+    eye_open: float = 1.85  # open the narrow eyes so the irises read (his look when facing the camera)
+    eye_scale: float = 1.12  # slightly larger eyes (beautify, more expressive)
     smile_lift_r: float = 3.2  # mm: his right mouth corner (viewer's left) rises more
     smile_lift_l: float = 1.8
     # skull (real mm)
-    half_width: float = 83.0  # fitted to his frontal head silhouette (rms 2.3 mm)
+    half_width: float = 80.5  # fitted to silhouettes, trimmed from photo overlays
     half_length: float = 97.0
     up: float = 90.0  # round, broad crown
     down: float = 132.0
@@ -115,6 +116,12 @@ class Head2:
         # open the eyes a little around each eye's centre line
         for ids in (F.RIGHT_EYE, F.LEFT_EYE):
             ids = np.array(ids)
+            c = p[ids].mean(0)
+            # enlarge the whole eye region smoothly, then open the lids
+            d = np.linalg.norm((p - c)[:, [0, 2]] / np.array([24.0, 14.0]), axis=1)
+            w = np.exp(-d ** 2)
+            p[:, 0] = c[0] + (p[:, 0] - c[0]) * (1 + (P.eye_scale - 1) * w)
+            p[:, 2] = c[2] + (p[:, 2] - c[2]) * (1 + (P.eye_scale - 1) * w)
             zc = p[ids, 2].mean()
             p[ids, 2] = zc + (p[ids, 2] - zc) * P.eye_open
         # his nose: rounder tip, wider wings
@@ -271,7 +278,7 @@ class Head2:
             disp -= (0.10 / s) * np.exp(-(d / (0.30 / s)) ** 2) * facing
         # faint smile lines from the nose wings
         for ids in ([129, 203, 206, 216], [358, 423, 426, 436]):
-            disp -= line_feature(p[ids], 0.07, 0.6)
+            disp -= line_feature(p[ids], 0.03, 0.6)
         # nostrils: small soft dents beside the tip
         for c in (98, 327):
             d = np.hypot(sx - p[c, 0], sz - p[c, 2])
