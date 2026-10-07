@@ -28,6 +28,11 @@ def keep_largest(field, h):
     return field, dropped
 
 
+def nonmanifold_edges(mesh):
+    _, cnt = np.unique(mesh.edges_sorted, axis=0, return_counts=True)
+    return int((cnt != 2).sum())
+
+
 def to_mesh(field, grid: Grid, target_faces=None):
     """Marching cubes on the zero level set. Returns (trimesh, info dict)."""
     h = grid.h
@@ -38,10 +43,13 @@ def to_mesh(field, grid: Grid, target_faces=None):
     hi = np.minimum(idx.max(0) + 3, field.shape)
     sub = field[lo[0]:hi[0], lo[1]:hi[1], lo[2]:hi[2]]
     sub = np.pad(sub, 1, constant_values=BIG)
-    # a tiny iso offset avoids exact zeros, whose degenerate triangles would otherwise tear holes
-    verts, faces, _, _ = marching_cubes(sub, 1e-5, spacing=(h, h, h), allow_degenerate=False)
-    verts += grid.lo + (lo - 1) * h
-    mesh = trimesh.Trimesh(verts, faces, process=True)
+    # a tiny iso offset avoids exact zeros (degenerate triangles); if the surface pinches itself
+    # at a voxel edge (non-manifold edge), nudge the iso level until the pinch resolves
+    for level in (1e-5, -0.03 * h, 0.03 * h, -0.08 * h, 0.08 * h):
+        verts, faces, _, _ = marching_cubes(sub, level, spacing=(h, h, h), allow_degenerate=False)
+        mesh = trimesh.Trimesh(verts + grid.lo + (lo - 1) * h, faces, process=True)
+        if nonmanifold_edges(mesh) == 0 and mesh.is_watertight:
+            break
     if mesh.volume < 0:
         mesh.invert()
     raw_faces = len(mesh.faces)

@@ -60,7 +60,7 @@ def robust_union(meshes):
         return trimesh.util.concatenate(fixed)
 
 
-def export(name, parts, h_parts, faces_per_part=600_000):
+def export(name, parts, h_parts, faces_per_part=600_000, meta=None):
     """parts: ordered {part: node}; later parts lose their overlap with earlier ones.
 
     With PREVIEW=<voxel mm> in the environment, only a quick single mesh is made (for iteration).
@@ -95,6 +95,7 @@ def export(name, parts, h_parts, faces_per_part=600_000):
     whole.export(os.path.join(OUT, name, f"{name}.stl"))
     rep = mesh_report(whole)
     rep["parts"] = report
+    rep["meta"] = meta or {}
     with open(os.path.join(OUT, name, "report.json"), "w") as fh:
         json.dump(rep, fh, indent=1)
     print(f"[{name}] whole: {json.dumps({k: v for k, v in rep.items() if k != 'parts'})}", flush=True)
@@ -116,7 +117,7 @@ def full(height=170.0, base_h=3.0, h_body=0.14, h_head=0.08):
     head = A.head_nodes(hd, pl)
     parts = {"skin_head": head["skin_head"], "body": body, "hair": head["hair"], "glasses": head["glasses"], "base": base}
     hp = {"skin_head": h_head, "body": h_body, "hair": h_head, "glasses": h_head, "base": 0.3}
-    return export("his_jk_full", parts, hp)
+    return export("his_jk_full", parts, hp, meta={"k": k, "base_h": base_h})
 
 
 
@@ -202,7 +203,7 @@ def big_head(name="his_jk_q_bald", hair="bald", total=150.0, head_ratio=0.30, ba
     hp["glasses"] = h_head
     parts["base"] = base
     hp["base"] = 0.3
-    return export(name, parts, hp)
+    return export(name, parts, hp, meta={"k": k, "base_h": base_h})
 
 
 def chibi_bald():
@@ -232,7 +233,7 @@ def bust(height=172.0, base_h=3.0, head_mm=50.0, h_body=0.13, h_head=0.08):
     head = A.head_nodes(hd, pl)
     parts = {"skin_head": head["skin_head"], "body": body, "hair": head["hair"], "glasses": head["glasses"], "base": base}
     hp = {"skin_head": h_head, "body": h_body, "hair": h_head, "glasses": h_head, "base": 0.3}
-    return export("his_jk_bust", parts, hp)
+    return export("his_jk_bust", parts, hp, meta={"k": k, "base_h": base_h - 8.9 * k})
 
 
 if __name__ == "__main__":
