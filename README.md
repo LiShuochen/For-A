@@ -6,13 +6,14 @@
 
 | 模型 | 文件 | 高度 | 说明 |
 |---|---|---|---|
-| 全身版 | `out/his_jk_full/his_jk_full.stl` | 约 170 mm | 修长身材，害羞比心站姿，白衬衫、领带、黑百褶裙，配本人头像（寸头、黑框眼镜、闭嘴浅笑） |
-| Q 版 · 秃头 | `out/his_jk_q_bald/his_jk_q_bald.stl` | 约 150 mm | 大头娃娃比例，光头，头顶一撮很多根的短毛 |
-| 半身像 | `out/his_jk_bust/his_jk_bust.stl` | 约 170 mm | 从裙摆以上，脸做得最大最细，裙摆当底座 |
+| 全身版（正常比例） | `out/his_jk_full/his_jk_full.stl` | 约 169 mm | 修长身材，害羞比心站姿，白衬衫、领带、黑百褶裙，配本人头像（寸头、黑框眼镜、闭嘴浅笑） |
+| Q 版胖身子公仔 | `out/his_jk_q_doll/his_jk_q_doll.stl` | 约 125 mm | 约 2.3 头身的胖身子 JK 公仔：水手服、红领结、百褶裙、过膝袜、圆头鞋，大头带寸头和眼镜 |
 
 每个子目录里还有：
 
-- `parts/`：多色打印分件，各自封闭、互不重叠，分为 `skin_head`（头和脸）、`body`（身体和衣服）、`hair`、`glasses`、`base`。
+- `parts/`：多色打印分件，各自封闭、互不重叠。
+  - 全身版：`skin_head`（头和脸）、`body`（身体和衣服）、`hair`、`glasses`、`base`。
+  - Q 版：另外细分为 `top`（白衣）、`collar`、`bow`、`skirt`、`socks`、`shoes`、`skin`。
 - `report.json`：尺寸、体积、预计耗材、悬垂面积、是否水密。
 - `preview_colour.png`、`preview_face.png`、`preview_single_colour.png`：渲染预览。
 
@@ -55,7 +56,7 @@
 uv venv -p 3.12 .venv
 uv pip install -p .venv/bin/python numpy scipy scikit-image trimesh opencv-python-headless mediapipe \
     matplotlib fast-simplification rtree networkx pillow libigl open3d pygltflib manifold3d pytest
-PYTHONPATH=. .venv/bin/python -m figurine.build full        # 或 chibi_bald / chibi_long / bust
+PYTHONPATH=. .venv/bin/python -m figurine.build full        # 或 q_doll
 PYTHONPATH=. .venv/bin/python -m figurine.finalize          # 生成彩色预览
 PYTHONPATH=. .venv/bin/python -m pytest tests
 ```
@@ -73,7 +74,8 @@ PYTHONPATH=. .venv/bin/python -m pytest tests
 | `figurine/face.py` | 多张照片 → MediaPipe 478 个关键点 → 转正、融合 |
 | `figurine/head2.py` | 本人头像：关键点网格细分成光滑脸，拟合头型，再加上美化、立体眼睛（眼球、虹膜、瞳孔、高光）、薄唇浅笑、M 形发际线寸头、外张的耳朵、黑框眼镜，以及 Q 版头顶短毛（`crown_tufts`） |
 | `figurine/assemble.py` | 在脖子处切掉原模型的头，按下巴和脖子对齐装上本人的头 |
-| `figurine/build.py` | 生成四个成品和多色分件 |
+| `figurine/build.py` | 生成成品和多色分件 |
+| `figurine/chubby.py` | Q 版胖身子 JK 公仔身体（距离场基本体建模） |
 | `figurine/sdf.py`、`mesher.py`、`meshsdf.py` | 距离场建模、任意网格转实体、提取水密网格 |
 | `figurine/check.py`、`preview.py`、`colorize.py` | 打印检查、无 GPU 渲染、贴图取色预览 |
 

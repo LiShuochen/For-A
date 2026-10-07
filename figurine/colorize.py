@@ -73,7 +73,10 @@ def body_colors(mesh, gltf_path, body_objects, k, base_h, prefer_less=("Object_0
 
 def present(name, out_dir, parts, body_cols=None, face_crop_mm=60.0):
     """parts: {part: mesh}. Writes preview_colour.png, preview_face.png, preview_single.png."""
-    cols = {"skin_head": SKIN, "hair": HAIR, "glasses": BLACK, "base": BASE}
+    cols = {"skin_head": SKIN, "skin": SKIN, "hair": HAIR, "glasses": BLACK, "base": BASE,
+            "top": np.array([0.97, 0.97, 0.96]), "collar": np.array([0.13, 0.17, 0.32]),
+            "bow": np.array([0.80, 0.12, 0.14]), "skirt": np.array([0.13, 0.17, 0.32]),
+            "socks": np.array([0.12, 0.13, 0.20]), "shoes": np.array([0.24, 0.15, 0.10])}
     meshes, colors = [], []
     for p, m in parts.items():
         meshes.append(m)

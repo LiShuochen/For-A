@@ -77,7 +77,11 @@ def drop_slivers(m, min_vol=0.05, min_faces=30):
     keep = [c for c in comps if len(c.faces) >= min_faces and abs(c.volume) > min_vol]
     out = trimesh.util.concatenate(keep) if len(keep) > 1 else keep[0]
     out.merge_vertices()
-    return fix_pinches(out)
+    out = fix_pinches(out)
+    # splitting pinches can leave zero-area back-to-back face pairs: drop those too
+    comps = out.split(only_watertight=False)
+    keep = [c for c in comps if len(c.faces) >= min_faces and abs(c.volume) > min_vol]
+    return trimesh.util.concatenate(keep) if len(keep) > 1 else keep[0]
 
 
 def _bad_edges(m):
@@ -339,6 +343,28 @@ def bust(height=172.0, base_h=3.0, head_mm=50.0, h_body=0.16, h_head=0.08):
     parts = {"skin_head": head["skin_head"], "body": body, "hair": head["hair"], "glasses": head["glasses"], "base": base}
     hp = {"skin_head": h_head, "body": h_body, "hair": h_head, "glasses": h_head, "base": 0.3}
     return export("his_jk_bust", parts, hp, meta={"k": k, "base_h": base_h - 8.9 * k}, head_box=_head_box(at))
+
+
+def q_doll(total=122.0, base_h=3.0, head_mm=50.0, h_body=0.1, h_head=0.09):
+    """Q version: chubby JK doll body + his big head (crew cut, glasses)."""
+    from .chubby import chubby_body
+
+    body_h = total - base_h - head_mm + 10.0  # the head sits right on the shoulders
+    groups, att = chubby_body(body_h, base_h)
+    s = head_mm / 236.0
+    hd = A.his_head(s)
+    nt = att["neck_top"]
+    at = A.Attach(z_cut=float(nt[2] - 2.0), neck_xy=np.array([nt[0], nt[1]]), neck_r=float(att["neck_r"]),
+                  chin=np.array([0.0, 0.0, att["chin_z"]]), head_h=head_mm)
+    pl = A.place_head(hd, at, roll_deg=-5.0, pitch_deg=3.0)
+    head = A.head_nodes(hd, pl)
+    base = sdf.cylinder_z((0, 0), 0.47 * body_h, 0.0, base_h + 0.4, round_=0.8, name="base")
+    parts = {"skin_head": head["skin_head"], "hair": head["hair"], "glasses": head["glasses"],
+             "top": groups["top"], "collar": groups["collar"], "bow": groups["bow"], "skirt": groups["skirt"],
+             "socks": groups["socks"], "shoes": groups["shoes"], "skin": groups["skin"], "base": base}
+    hp = {p: h_body for p in parts}
+    hp.update(skin_head=h_head, hair=h_head, glasses=h_head, base=0.3)
+    return export("his_jk_q_doll", parts, hp, meta={"doll": True}, head_box=_head_box(at))
 
 
 if __name__ == "__main__":

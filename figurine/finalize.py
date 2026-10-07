@@ -23,11 +23,14 @@ def main():
         rep = json.load(open(rep_path))
         meta = rep.get("meta") or DEFAULT_META.get(name)
         parts = {}
-        for p in ("skin_head", "body", "hair", "glasses", "base"):
+        for p in ("skin_head", "body", "hair", "glasses", "top", "collar", "bow", "skirt", "socks", "shoes",
+                  "skin", "base"):
             f = os.path.join(d, "parts", f"{name}_{p}.stl")
             if os.path.exists(f):
                 parts[p] = trimesh.load(f)
-        cols = body_colors(parts["body"], LUNTIMA, BODY_OBJECTS, meta["k"], meta["base_h"]) if meta else None
+        cols = None
+        if "body" in parts and meta and "k" in meta:
+            cols = body_colors(parts["body"], LUNTIMA, BODY_OBJECTS, meta["k"], meta["base_h"])
         present(name, d, parts, cols)
         print(name, "previews written", flush=True)
 
