@@ -98,3 +98,13 @@ def test_thin_voxels_flags_thin_plate_only():
     xs = np.broadcast_to(x, field.shape)
     assert thin[xs < 6].sum() > 0.9 * inside[xs < 6].sum()
     assert thin[xs > 10].sum() < 0.02 * inside[xs > 10].sum()
+
+
+def test_slim_keeps_watertight_and_shape():
+    from figurine.slim import slim
+
+    field, grid = sdf.evaluate(sdf.sphere((0, 0, 0), 5), 0.1)
+    mesh, _ = to_mesh(field, grid)
+    out, info = slim(mesh, 4000)
+    assert out.is_watertight and len(out.faces) < 0.2 * len(mesh.faces)
+    assert info["dev_max_mm"] < 0.05

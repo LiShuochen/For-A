@@ -17,6 +17,11 @@
 - `report.json`：尺寸、体积、预计耗材、悬垂面积、是否水密。
 - `preview_colour.png`、`preview_face.png`、`preview_single_colour.png`：渲染预览。
 
+`out/deliver/` 里是发给打印用的压缩包（`python -m figurine.slim` 生成）：
+
+- 每个模型一个单色整体包、一个多色分件包，每个都小于 30 MB。
+- 里面的 STL 减到打印分辨率，整体约 100 万面。表面偏差小于 0.01 mm，仍然水密。
+
 ## 拓竹 Bambu Studio 打印设置（A1 mini，0.4 mm 喷嘴）
 
 1. **导入模型**
@@ -63,6 +68,7 @@ uv pip install -p .venv/bin/python numpy scipy scikit-image trimesh opencv-pytho
     matplotlib fast-simplification rtree networkx pillow libigl open3d pygltflib manifold3d pytest
 PYTHONPATH=. .venv/bin/python -m figurine.build full        # 或 q_doll
 PYTHONPATH=. .venv/bin/python -m figurine.finalize          # 生成彩色预览（可加模型名，只做一个）
+PYTHONPATH=. .venv/bin/python -m figurine.slim              # 打包 out/deliver/*.zip
 PYTHONPATH=. .venv/bin/python -m pytest tests
 ```
 
@@ -83,6 +89,7 @@ PYTHONPATH=. .venv/bin/python -m pytest tests
 | `figurine/chubby.py` | Q 版胖身子 JK 公仔身体（距离场基本体建模） |
 | `figurine/sdf.py`、`mesher.py`、`meshsdf.py` | 距离场建模、任意网格转实体、提取水密网格 |
 | `figurine/check.py`、`preview.py`、`colorize.py` | 打印检查、无 GPU 渲染、贴图取色预览 |
+| `figurine/slim.py` | 减面到打印分辨率并校验，打包成可发送的 zip |
 
 ## 素材来源与许可
 
