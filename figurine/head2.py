@@ -60,7 +60,7 @@ class Head2Params:
     toward_avg: float = 0.15
     symmetry: float = 1.0
     jaw_scale: float = 1.12  # >1 widens the lower face (his is a broad, round U-shape)
-    eye_open: float = 1.25  # open the narrow eyes a touch
+    eye_open: float = 1.6  # open the narrow eyes so the irises read (his look when facing the camera)
     smile_lift_r: float = 3.2  # mm: his right mouth corner (viewer's left) rises more
     smile_lift_l: float = 1.8
     # skull (real mm)
@@ -79,16 +79,16 @@ class Head2Params:
     groove_d: float = 0.22
     brow_h: float = 0.26
     glasses_t: float = 0.5
-    glasses_w: float = 0.7
+    glasses_w: float = 0.5
     # glasses (real mm, frontal plane): thin black rectangular frames
-    lens_cx: float = 33.0
-    lens_cz: float = -3.0
-    lens_hw: float = 26.5
-    lens_hh: float = 17.5
+    lens_cx: float = 34.0
+    lens_cz: float = -5.0
+    lens_hw: float = 28.0
+    lens_hh: float = 19.5
     lens_r: float = 5.5
     # hair (real mm)
     hair_top: float = 4.5
-    hair_side: float = 2.6
+    hair_side: float = 1.8
     hair_stubble: float = 0.22
 
 
@@ -121,6 +121,14 @@ class Head2:
         nc = p[1]
         d = np.linalg.norm((p - nc)[:, [0, 2]] / np.array([22.0, 16.0]), axis=1)
         p[:, 0] = nc[0] + (p[:, 0] - nc[0]) * (1.0 + 0.12 * np.exp(-d ** 2))
+        # his mouth sits a little lower than the landmark fit
+        mc0 = 0.5 * (p[13] + p[14])
+        d = np.linalg.norm((p - mc0)[:, [0, 2]] / np.array([30.0, 12.0]), axis=1)
+        p[:, 2] -= 1.5 * np.exp(-d ** 2)
+        # his mouth is wide: stretch the mouth region sideways about its centre
+        mc0 = 0.5 * (p[13] + p[14])
+        d = np.linalg.norm((p - mc0)[:, [0, 2]] / np.array([34.0, 14.0]), axis=1)
+        p[:, 0] = mc0[0] + (p[:, 0] - mc0[0]) * (1.0 + 0.09 * np.exp(-d ** 2))
         # thin lips: MediaPipe over-estimates lip depth, so push the mouth area back
         mc = 0.5 * (p[13] + p[14])
         d = np.linalg.norm((p - mc)[:, [0, 2]] / np.array([30.0, 16.0]), axis=1)

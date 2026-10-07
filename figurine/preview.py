@@ -19,7 +19,13 @@ def _view_matrix(az, el):
     return rot("x", el) @ rot("z", -az)
 
 
-def render(mesh, az=0.0, el=0.0, px=0.15, colors=None, crop=None, bg=255):
+def project(points, az, el, meta):
+    """Pixel (col, row) of world points in an image made by render(..., meta=dict)."""
+    P = np.asarray(points) @ _view_matrix(az, el).T
+    return np.stack([(P[:, 0] - meta["umin"]) / meta["px"], (meta["vmax"] - P[:, 2]) / meta["px"]], 1)
+
+
+def render(mesh, az=0.0, el=0.0, px=0.15, colors=None, crop=None, bg=255, meta=None):
     """Render mesh. az/el in degrees (az=0 -> front view, face looks at the camera).
 
     colors: optional (n_vertices, 3) floats 0..1. crop: world-space (zmin, zmax) to frame.
@@ -53,6 +59,8 @@ def render(mesh, az=0.0, el=0.0, px=0.15, colors=None, crop=None, bg=255):
         colors = None if colors is None else colors[keep]
     u, v, d = P[:, 0], P[:, 2], P[:, 1]
     umin, vmax = u.min() - 2 * px, v.max() + 2 * px
+    if meta is not None:
+        meta.update(umin=umin, vmax=vmax, px=px)
     W = int(np.ceil((u.max() - umin) / px)) + 3
     H = int(np.ceil((vmax - v.min()) / px)) + 3
     j = ((u - umin) / px).astype(np.int64)
