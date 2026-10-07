@@ -7,7 +7,7 @@
 | 模型 | 文件 | 高度 | 说明 |
 |---|---|---|---|
 | 全身版（正常比例） | `out/his_jk_full/his_jk_full.stl` | 约 169 mm | 修长身材，害羞比心站姿，白衬衫、领带、黑百褶裙，配本人头像（寸头、黑框眼镜、闭嘴浅笑） |
-| Q 版胖身子公仔 | `out/his_jk_q_doll/his_jk_q_doll.stl` | 约 125 mm | 约 2.3 头身的胖身子 JK 公仔：水手服、红领结、百褶裙、过膝袜、圆头鞋，大头带寸头和眼镜 |
+| Q 版胖身子公仔 | `out/his_jk_q_doll/his_jk_q_doll.stl` | 约 125 mm | 约 2.3 头身的胖身子 JK 公仔：水手服、红领结、百褶裙、及膝袜、圆头鞋，大头带寸头和眼镜 |
 
 每个子目录里还有：
 
@@ -44,11 +44,16 @@
    - 鞋跟和底座之间无需支撑。
 5. **耗材**
    - 推荐哑光 PLA，脸部不反光，更像手办。
-   - 多色方案（AMS lite 4 色）：
+   - 全身版多色方案（AMS lite 4 色）：
      - 肤色：`skin_head`、`body`
      - 黑色：`hair`、`glasses`
      - 白或灰：`base`
-   - 如果想让衣服分色（白衬衫、黑裙），可以在 Bambu Studio 里用"上色"工具直接涂 `body`。
+     - 如果想让衣服分色（白衬衫、黑裙），可以在 Bambu Studio 里用"上色"工具直接涂 `body`。
+   - Q 版多色方案（AMS lite 4 色）：
+     - 肤色：`skin_head`、`skin`
+     - 黑色：`hair`、`glasses`、`collar`、`skirt`、`socks`、`shoes`
+     - 白色：`top`、`base`
+     - 红色：`bow`
 
 ## 怎么重新生成
 
@@ -57,7 +62,7 @@ uv venv -p 3.12 .venv
 uv pip install -p .venv/bin/python numpy scipy scikit-image trimesh opencv-python-headless mediapipe \
     matplotlib fast-simplification rtree networkx pillow libigl open3d pygltflib manifold3d pytest
 PYTHONPATH=. .venv/bin/python -m figurine.build full        # 或 q_doll
-PYTHONPATH=. .venv/bin/python -m figurine.finalize          # 生成彩色预览
+PYTHONPATH=. .venv/bin/python -m figurine.finalize          # 生成彩色预览（可加模型名，只做一个）
 PYTHONPATH=. .venv/bin/python -m pytest tests
 ```
 
@@ -72,7 +77,7 @@ PYTHONPATH=. .venv/bin/python -m pytest tests
 | 模块 | 作用 |
 |---|---|
 | `figurine/face.py` | 多张照片 → MediaPipe 478 个关键点 → 转正、融合 |
-| `figurine/head2.py` | 本人头像：关键点网格细分成光滑脸，拟合头型，再加上美化、立体眼睛（眼球、虹膜、瞳孔、高光）、薄唇浅笑、M 形发际线寸头、外张的耳朵、黑框眼镜，以及 Q 版头顶短毛（`crown_tufts`） |
+| `figurine/head2.py` | 本人头像：关键点网格细分成光滑脸，拟合头型，再加上美化、立体眼睛（眼球、虹膜、瞳孔、高光）、薄唇浅笑、M 形发际线寸头、外张的耳朵、黑框眼镜 |
 | `figurine/assemble.py` | 在脖子处切掉原模型的头，按下巴和脖子对齐装上本人的头 |
 | `figurine/build.py` | 生成成品和多色分件 |
 | `figurine/chubby.py` | Q 版胖身子 JK 公仔身体（距离场基本体建模） |

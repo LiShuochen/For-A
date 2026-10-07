@@ -72,6 +72,16 @@ def test_mesher_sphere_watertight_volume_and_islands():
     assert rep["bodies"] == 1 and rep["watertight"]
 
 
+def test_mesher_keeps_islands_above_threshold():
+    # a colour part like "both hands": two separate pieces plus a crumb
+    u = sdf.Union([sdf.sphere((0, 0, 0), 3), sdf.sphere((10, 0, 0), 2), sdf.sphere((20, 0, 0), 0.4)])
+    field, grid = sdf.evaluate(u, 0.1)
+    mesh, info = to_mesh(field, grid, min_island_mm3=1.0)
+    assert mesh.is_watertight
+    assert mesh_report(mesh)["bodies"] == 2
+    assert len(info["dropped_islands_mm3"]) == 1  # only the crumb
+
+
 def test_decimation_keeps_watertight():
     field, grid = sdf.evaluate(sdf.sphere((0, 0, 0), 5), 0.1)
     mesh, info = to_mesh(field, grid, target_faces=5000)

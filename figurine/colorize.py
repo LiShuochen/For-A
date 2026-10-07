@@ -7,7 +7,6 @@ import os
 import numpy as np
 import open3d as o3d
 import trimesh
-from PIL import Image
 
 from .preview import render, sheet
 

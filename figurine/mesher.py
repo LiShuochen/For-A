@@ -13,18 +13,24 @@ def solid_mask(field):
     return field < 0
 
 
-def keep_largest(field, h):
-    """Drop floating islands (keeps the largest connected solid). Returns (field, dropped volumes mm^3)."""
+def keep_largest(field, h, min_island_mm3=None):
+    """Drop floating islands. Keeps the largest connected solid, plus every other island of at least
+    `min_island_mm3` when given (a colour part such as "both hands" is several pieces).
+    Returns (field, dropped volumes mm^3)."""
     inside = field < 0
     lab, n = ndimage.label(inside)
     if n <= 1:
         return field, []
     sizes = np.bincount(lab.ravel())
     sizes[0] = 0
-    keep = sizes.argmax()
-    dropped = sorted((float(s) * h ** 3 for i, s in enumerate(sizes) if i not in (0, keep)), reverse=True)
+    keep = np.zeros(len(sizes), bool)
+    keep[sizes.argmax()] = True
+    if min_island_mm3 is not None:
+        keep |= sizes * h ** 3 >= min_island_mm3
+    keep[0] = False
+    dropped = sorted((float(s) * h ** 3 for i, s in enumerate(sizes) if i and not keep[i]), reverse=True)
     field = field.copy()
-    field[(lab != keep) & inside] = np.float32(h)
+    field[~keep[lab] & inside] = np.float32(h)
     return field, dropped
 
 
@@ -33,10 +39,10 @@ def nonmanifold_edges(mesh):
     return int((cnt != 2).sum())
 
 
-def to_mesh(field, grid: Grid, target_faces=None):
+def to_mesh(field, grid: Grid, target_faces=None, min_island_mm3=None):
     """Marching cubes on the zero level set. Returns (trimesh, info dict)."""
     h = grid.h
-    field, dropped = keep_largest(field, h)
+    field, dropped = keep_largest(field, h, min_island_mm3)
     # crop to the solid's bounding box (+2 voxels) and pad with "outside" so the surface is closed
     idx = np.argwhere(field < 0)
     lo = np.maximum(idx.min(0) - 2, 0)
